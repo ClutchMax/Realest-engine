@@ -1,0 +1,12 @@
+# shaderc-sys vendors glslang/SPIRV-Tools, whose CMakeLists declare
+# cmake_minimum_required below 3.5. CMake 4.0 removed compatibility with that,
+# so configuring fails with "Compatibility with CMake < 3.5 has been removed".
+# This restores the old policy floor for the vendored build.
+#
+# Note: only `[env]` belongs in this file. Do NOT add `rustflags` here - that
+# changes the fingerprint of the whole dependency graph and forces shaderc-sys
+# to rebuild from source. The Windows stack-size linker flag lives in build.rs
+# (rustc-link-arg-bins) precisely to avoid that.
+
+[env]
+CMAKE_POLICY_VERSION_MINIMUM = "3.5"
