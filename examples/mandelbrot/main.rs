@@ -88,7 +88,7 @@ pub fn main() {
                         }
                     }
 
-                    vec4 to_write = vec4(1 - i, 0.0, i, 1 - i);
+                    vec4 to_write = vec4(1 - i, 0.0, i, 1.0);
                     imageStore(img, ivec2(gl_GlobalInvocationID.xy), to_write);
                 }
             ",
