@@ -1,37 +1,17 @@
 
-use std::{error::Error, sync::Arc};
+use std::{error::Error, sync::Arc, time::Instant};
 use vulkano::{
-    buffer::{Buffer, BufferContents, BufferCreateInfo, BufferUsage, Subbuffer},
-    command_buffer::{
-        allocator::StandardCommandBufferAllocator, AutoCommandBufferBuilder, CommandBufferUsage,
-        RenderPassBeginInfo, SubpassBeginInfo, SubpassContents,
-    },
-    device::{
-        physical::PhysicalDeviceType, Device, DeviceCreateInfo, DeviceExtensions, Queue,
-        QueueCreateInfo, QueueFlags,
-    },
-    image::{view::ImageView, Image, ImageUsage},
-    instance::{Instance, InstanceCreateFlags, InstanceCreateInfo},
-    memory::allocator::{AllocationCreateInfo, MemoryTypeFilter, StandardMemoryAllocator},
-    pipeline::{
-        graphics::{
-            color_blend::{ColorBlendAttachmentState, ColorBlendState},
-            input_assembly::InputAssemblyState,
-            multisample::MultisampleState,
-            rasterization::RasterizationState,
-            vertex_input::{Vertex, VertexDefinition},
-            viewport::{Viewport, ViewportState},
-            GraphicsPipelineCreateInfo,
-        },
-        layout::PipelineDescriptorSetLayoutCreateInfo,
-        DynamicState, GraphicsPipeline, PipelineLayout, PipelineShaderStageCreateInfo,
-    },
-    render_pass::{Framebuffer, FramebufferCreateInfo, RenderPass, Subpass},
-    swapchain::{
-        acquire_next_image, Surface, Swapchain, SwapchainCreateInfo, SwapchainPresentInfo,
-    },
-    sync::{self, GpuFuture},
-    Validated, VulkanError, VulkanLibrary,
+    Validated, VulkanError, VulkanLibrary, buffer::{Buffer, BufferContents, BufferCreateInfo, BufferUsage, Subbuffer}, command_buffer::{
+        AutoCommandBufferBuilder, CommandBufferUsage, RenderPassBeginInfo, SubpassBeginInfo, SubpassContents, allocator::StandardCommandBufferAllocator,
+    }, device::{
+        Device, DeviceCreateInfo, DeviceExtensions, Queue, QueueCreateInfo, QueueFlags, physical::PhysicalDeviceType,
+    }, image::{Image, ImageUsage, view::ImageView}, instance::{Instance, InstanceCreateFlags, InstanceCreateInfo}, memory::allocator::{AllocationCreateInfo, MemoryTypeFilter, StandardMemoryAllocator}, pipeline::{
+        DynamicState, GraphicsPipeline, Pipeline, PipelineLayout, PipelineShaderStageCreateInfo, graphics::{
+            GraphicsPipelineCreateInfo, color_blend::{ColorBlendAttachmentState, ColorBlendState}, input_assembly::InputAssemblyState, multisample::MultisampleState, rasterization::RasterizationState, vertex_input::{Vertex, VertexDefinition}, viewport::{Viewport, ViewportState},
+        }, layout::PipelineDescriptorSetLayoutCreateInfo,
+    }, render_pass::{Framebuffer, FramebufferCreateInfo, RenderPass, Subpass}, swapchain::{
+        Surface, Swapchain, SwapchainCreateInfo, SwapchainPresentInfo, acquire_next_image,
+    }, sync::{self, GpuFuture},
 };
 use vulkano_taskgraph::{
     command_buffer::RecordingCommandBuffer,
@@ -60,6 +40,7 @@ struct App {
     command_buffer_allocator: Arc<StandardCommandBufferAllocator>,
     vertex_buffer: Subbuffer<[MyVertex]>,
     rcx: Option<RenderContext>,
+    start_time: Option<Instant>,
 }
 
 struct RenderContext {
@@ -188,6 +169,7 @@ impl App {
         .unwrap();
 
         let rcx = None;
+        let start_time = Some(Instant::now());
 
         App {
             instance,
@@ -196,6 +178,7 @@ impl App {
             command_buffer_allocator,
             vertex_buffer,
             rcx,
+            start_time,
         }
 
 
@@ -273,9 +256,17 @@ impl ApplicationHandler for App {
                     #version 450
                     
                     layout(location = 0) out vec4 f_color;
+
+                    layout(push_constant) uniform Time {
+                        float time;
+                    } u_time;
                     
                     void main() {
-                        f_color = vec4(1.0, 0.0, 0.0, 1.0);
+                        float r = (sin(u_time.time) + 1.0) / 2.0;
+                        float g = (sin(u_time.time / 0.5) + 1.0) / 2.0;
+                        float b = (sin(u_time.time + 3.0)) + 1.0 / 2.0;
+                        
+                        f_color = vec4(r, g, b, 1.0);
                     }
                 ",
             }
@@ -391,6 +382,7 @@ impl ApplicationHandler for App {
                 rcx.recreate_swapchain = true;
             }
             WindowEvent::RedrawRequested => {
+                let elapsed = self.start_time.unwrap().elapsed().as_secs_f32();
                 let window_size = rcx.window.inner_size();
                 if window_size.width == 0 || window_size.height == 0 {
                     return;
@@ -446,7 +438,7 @@ impl ApplicationHandler for App {
                 builder
                     .begin_render_pass(
                         RenderPassBeginInfo {
-                            clear_values: vec![Some([0.0, 0.0, 1.0, 1.0].into())],
+                            clear_values: vec![Some([((self.start_time.unwrap().elapsed().as_secs_f32()).sin() + 1.0) / 2.0, 0.0, 1.0, 1.0].into())],
                             ..RenderPassBeginInfo::framebuffer(
                                 rcx.framebuffers[image_index as usize].clone(),
                             )
@@ -461,6 +453,12 @@ impl ApplicationHandler for App {
                     .set_viewport(0, [rcx.viewport.clone()].into_iter().collect())
                     .unwrap()
                     .bind_pipeline_graphics(rcx.pipeline.clone())
+                    .unwrap()
+                    // Added to change the color of the triangle with time
+                    .push_constants(rcx.pipeline.layout().clone(),
+                        0, 
+                        elapsed,
+                    )
                     .unwrap()
                     .bind_vertex_buffers(0, self.vertex_buffer.clone())
                     .unwrap();
