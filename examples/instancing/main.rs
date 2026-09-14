@@ -194,7 +194,7 @@ impl App {
         let instance_buffer = Buffer::from_iter(
             memory_allocator,
             BufferCreateInfo {
-                usage::BufferUsage::VERTEX_BUFFER,
+                usage: BufferUsage::VERTEX_BUFFER,
                 ..Default::default()
             },
             AllocationCreateInfo {
@@ -343,7 +343,9 @@ impl ApplicationHandler for App {
                 .entry_point("main")
                 .unwrap();
 
-            let vertex_input_state = [MyVertex::per_vertex(), InstanceData::per_instance()].definition(&vs).unwrap();
+            let vertex_input_state = [MyVertex::per_vertex(), InstanceData::per_instance()]
+                .definition(&vs)
+                .unwrap();
 
             let stages = [
                 PipelineShaderStageCreateInfo::new(vs),
@@ -502,10 +504,17 @@ impl ApplicationHandler for App {
                         elapsed,
                     )
                     .unwrap()
-                    .bind_vertex_buffers(0, self.vertex_buffer.clone())
+                    .bind_vertex_buffers(0,
+                        (self.vertex_buffer.clone(), self.instance_buffer.clone()),
+                    )
                     .unwrap();
 
-                unsafe { builder.draw(self.vertex_buffer.len() as u32, 1, 0, 0) }.unwrap();
+                unsafe { builder.draw(self.vertex_buffer.len() as u32, 
+                                        self.instance_buffer.len() as u32,
+                                        0,
+                                        0)
+                        }
+                    .unwrap();
 
                 builder
                     .end_render_pass(Default::default())
@@ -557,6 +566,17 @@ impl ApplicationHandler for App {
 struct MyVertex {
     #[format(R32G32_SFLOAT)]
     position: [f32; 2],
+
+
+}
+
+#[derive(BufferContents, Vertex)]
+#[repr(C)]
+struct InstanceData {
+    #[format(R32G32_SFLOAT)]
+    position_offset: [f32; 2],
+    #[format(R32_SFLOAT)]
+    scale: f32,
 }
 
 /// This function is called once during initialization, then again whenever the window is resized.

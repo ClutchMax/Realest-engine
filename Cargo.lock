@@ -3,6 +3,19 @@
 version = 4
 
 [[package]]
+name = "Realest_engine"
+version = "0.1.0"
+dependencies = [
+ "image",
+ "tracing",
+ "tracing-subscriber",
+ "vulkano",
+ "vulkano-shaders",
+ "vulkano-taskgraph",
+ "winit",
+]
+
+[[package]]
 name = "ab_glyph"
 version = "0.2.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1713,19 +1726,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
-]
-
-[[package]]
-name = "test_window"
-version = "0.1.0"
-dependencies = [
- "image",
- "tracing",
- "tracing-subscriber",
- "vulkano",
- "vulkano-shaders",
- "vulkano-taskgraph",
- "winit",
 ]
 
 [[package]]
